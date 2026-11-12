@@ -1,10 +1,10 @@
 # Repo root is not the Node app — API lives in backend/ (Dokploy / Railway / Nixpacks).
 
 [variables]
-NIXPACKS_NODE_VERSION = "22"
+NIXPACKS_NODE_VERSION = "20"
 
 [phases.setup]
-nixPkgs = ["nodejs_22", "openssl"]
+nixPkgs = ["nodejs_20", "openssl"]
 
 [phases.install]
 dependsOn = ["setup"]
