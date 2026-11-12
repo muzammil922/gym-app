@@ -1,0 +1,881 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  MANAGER
+  TRAINER
+  RECEPTIONIST
+  MEMBER
+}
+
+enum MemberStatus {
+  ACTIVE
+  FROZEN
+  EXPIRED
+  CANCELLED
+  PENDING
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  FROZEN
+  EXPIRED
+  CANCELLED
+  PENDING
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  REFUNDED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIAL
+  PAID
+  VOID
+  OVERDUE
+}
+
+enum AttendanceMethod {
+  FACE
+  FINGER
+  CARD
+  PASSWORD
+  MANUAL
+  UNKNOWN
+}
+
+enum AttendanceDirection {
+  IN
+  OUT
+  UNKNOWN
+}
+
+enum MessageStatus {
+  QUEUED
+  SENDING
+  SENT
+  DELIVERED
+  FAILED
+  CANCELLED
+}
+
+enum DeviceVendor {
+  ZKTECO
+  HIKVISION
+  OTHER
+}
+
+enum OfferType {
+  PERCENT
+  FIXED
+  FREE_DAYS
+}
+
+enum DietMealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+  PRE_WORKOUT
+  POST_WORKOUT
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  ALERT
+  SYSTEM
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  FREEZE
+  UNFREEZE
+  PAYMENT
+  CHECK_IN
+  LOGIN
+  LOGOUT
+  OTHER
+}
+
+model Gym {
+  id        String    @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  city      String?
+  timezone  String    @default("Asia/Karachi")
+  currency  String    @default("PKR")
+  logoUrl   String?
+  settings  Json?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+
+  users               User[]
+  members             Member[]
+  staff               Staff[]
+  plans               Plan[]
+  subscriptions       MemberSubscription[]
+  payments            Payment[]
+  invoices            Invoice[]
+  offers              Offer[]
+  offerRedemptions    OfferRedemption[]
+  attendanceDevices   AttendanceDevice[]
+  attendanceLogs      AttendanceLog[]
+  deviceUserMaps      DeviceUserMap[]
+  dietTemplates       DietTemplate[]
+  dietAssignments     DietAssignment[]
+  memberDietSchedules MemberDietSchedule[]
+  exercises           Exercise[]
+  workoutPlans        WorkoutPlan[]
+  workoutAssignments  WorkoutAssignment[]
+  workoutLogs         WorkoutLog[]
+  staffSalaries       StaffSalary[]
+  staffAttendance     StaffAttendance[]
+  messageTemplates    MessageTemplate[]
+  messageQueue        MessageQueue[]
+  messageLogs         MessageLog[]
+  automationSettings  AutomationSetting[]
+  paymentAccounts     PaymentAccount[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  invoiceItems        InvoiceItem[]
+
+  @@map("gyms")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  gymId        String
+  phone        String
+  passwordHash String
+  fullName     String
+  email        String?
+  role         Role
+  isActive     Boolean   @default(true)
+  otpEnabled   Boolean   @default(false)
+  otpCode      String?
+  otpExpiresAt DateTime? @db.Timestamptz(3)
+  passwordSetAt DateTime? @db.Timestamptz(3)
+  lastLoginAt  DateTime? @db.Timestamptz(3)
+  refreshToken String?
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt    DateTime? @db.Timestamptz(3)
+
+  gym              Gym               @relation(fields: [gymId], references: [id])
+  member           Member?
+  staff            Staff?
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  createdPayments  Payment[]         @relation("PaymentCreatedBy")
+  manualCheckIns   AttendanceLog[]   @relation("ManualCheckInBy")
+
+  @@unique([gymId, phone])
+  @@index([gymId, role])
+  @@map("users")
+}
+
+model Member {
+  id              String       @id @default(cuid())
+  gymId           String
+  userId          String?      @unique
+  memberCode      String
+  fullName        String
+  phone           String
+  email           String?
+  gender          String?
+  dateOfBirth     DateTime?    @db.Date
+  address         String?
+  photoUrl        String?
+  emergencyContact String?
+  emergencyPhone  String?
+  status          MemberStatus @default(PENDING)
+  joinDate        DateTime     @default(now()) @db.Timestamptz(3)
+  notes           String?
+  trainerStaffId  String?
+  devicePin       String?
+  whatsappOptIn   Boolean      @default(true)
+  remindersEnabled Boolean     @default(true)
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(3)
+  deletedAt       DateTime?    @db.Timestamptz(3)
+
+  gym               Gym                  @relation(fields: [gymId], references: [id])
+  user              User?                @relation(fields: [userId], references: [id])
+  trainer           Staff?               @relation("TrainerMembers", fields: [trainerStaffId], references: [id])
+  subscriptions     MemberSubscription[]
+  payments          Payment[]
+  invoices          Invoice[]
+  offerRedemptions  OfferRedemption[]
+  attendanceLogs    AttendanceLog[]
+  deviceUserMaps    DeviceUserMap[]
+  dietAssignments   DietAssignment[]
+  dietSchedules     MemberDietSchedule[]
+  workoutAssignments WorkoutAssignment[]
+  workoutLogs       WorkoutLog[]
+
+  @@unique([gymId, memberCode])
+  @@unique([gymId, phone])
+  @@index([gymId, status])
+  @@index([gymId, trainerStaffId])
+  @@index([gymId, fullName])
+  @@map("members")
+}
+
+model Staff {
+  id           String    @id @default(cuid())
+  gymId        String
+  userId       String?   @unique
+  staffCode    String
+  fullName     String
+  phone        String
+  email        String?
+  role         Role
+  photoUrl     String?
+  hireDate     DateTime? @db.Date
+  salaryAmount Decimal?  @db.Decimal(12, 2)
+  isActive     Boolean   @default(true)
+  notes        String?
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt    DateTime? @db.Timestamptz(3)
+
+  gym      Gym           @relation(fields: [gymId], references: [id])
+  user     User?         @relation(fields: [userId], references: [id])
+  salaries   StaffSalary[]
+  attendance StaffAttendance[]
+  members    Member[]      @relation("TrainerMembers")
+  dietAssignments    DietAssignment[]    @relation("AssignedByStaff")
+  workoutAssignments WorkoutAssignment[] @relation("WorkoutAssignedBy")
+
+  @@unique([gymId, staffCode])
+  @@unique([gymId, phone])
+  @@index([gymId, role])
+  @@map("staff")
+}
+
+model Plan {
+  id           String    @id @default(cuid())
+  gymId        String
+  name         String
+  description  String?
+  durationDays Int
+  price        Decimal   @db.Decimal(12, 2)
+  currency     String    @default("PKR")
+  features     Json?
+  isActive     Boolean   @default(true)
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt    DateTime? @db.Timestamptz(3)
+
+  gym           Gym                  @relation(fields: [gymId], references: [id])
+  subscriptions MemberSubscription[]
+  offers        Offer[]
+
+  @@index([gymId, isActive])
+  @@map("plans")
+}
+
+model MemberSubscription {
+  id           String             @id @default(cuid())
+  gymId        String
+  memberId     String
+  planId       String
+  status       SubscriptionStatus @default(PENDING)
+  startDate    DateTime           @db.Timestamptz(3)
+  endDate      DateTime           @db.Timestamptz(3)
+  freezeStart  DateTime?          @db.Timestamptz(3)
+  freezeEnd    DateTime?          @db.Timestamptz(3)
+  freezeDays   Int                @default(0)
+  price        Decimal            @db.Decimal(12, 2)
+  discount     Decimal            @default(0) @db.Decimal(12, 2)
+  finalAmount  Decimal            @db.Decimal(12, 2)
+  notes        String?
+  createdAt    DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime           @updatedAt @db.Timestamptz(3)
+
+  gym      Gym      @relation(fields: [gymId], references: [id])
+  member   Member   @relation(fields: [memberId], references: [id])
+  plan     Plan     @relation(fields: [planId], references: [id])
+  payments Payment[]
+  invoices Invoice[]
+
+  @@index([gymId, memberId])
+  @@index([gymId, status])
+  @@index([gymId, endDate])
+  @@map("member_subscriptions")
+}
+
+model PaymentAccount {
+  id        String    @id @default(cuid())
+  gymId     String
+  name      String
+  type      String
+  details   Json?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+
+  gym      Gym       @relation(fields: [gymId], references: [id])
+  payments Payment[]
+
+  @@index([gymId])
+  @@map("payment_accounts")
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  gymId             String
+  memberId          String
+  subscriptionId    String?
+  invoiceId         String?
+  paymentAccountId  String?
+  amount            Decimal       @db.Decimal(12, 2)
+  currency          String        @default("PKR")
+  status            PaymentStatus @default(PAID)
+  method            String?
+  reference         String?
+  idempotencyKey    String?
+  paidAt            DateTime      @default(now()) @db.Timestamptz(3)
+  notes             String?
+  createdById       String?
+  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
+
+  gym            Gym               @relation(fields: [gymId], references: [id])
+  member         Member            @relation(fields: [memberId], references: [id])
+  subscription   MemberSubscription? @relation(fields: [subscriptionId], references: [id])
+  invoice        Invoice?          @relation(fields: [invoiceId], references: [id])
+  paymentAccount PaymentAccount?   @relation(fields: [paymentAccountId], references: [id])
+  createdBy      User?             @relation("PaymentCreatedBy", fields: [createdById], references: [id])
+
+  @@unique([gymId, idempotencyKey])
+  @@index([gymId, memberId])
+  @@index([gymId, paidAt])
+  @@map("payments")
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  gymId          String
+  memberId       String
+  subscriptionId String?
+  invoiceNumber  String
+  status         InvoiceStatus @default(ISSUED)
+  subtotal       Decimal       @db.Decimal(12, 2)
+  discount       Decimal       @default(0) @db.Decimal(12, 2)
+  tax            Decimal       @default(0) @db.Decimal(12, 2)
+  total          Decimal       @db.Decimal(12, 2)
+  paidAmount     Decimal       @default(0) @db.Decimal(12, 2)
+  dueAmount      Decimal       @db.Decimal(12, 2)
+  currency       String        @default("PKR")
+  issueDate      DateTime      @default(now()) @db.Timestamptz(3)
+  dueDate        DateTime      @db.Timestamptz(3)
+  pdfUrl         String?
+  notes          String?
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
+
+  gym          Gym                @relation(fields: [gymId], references: [id])
+  member       Member             @relation(fields: [memberId], references: [id])
+  subscription MemberSubscription? @relation(fields: [subscriptionId], references: [id])
+  items        InvoiceItem[]
+  payments     Payment[]
+
+  @@unique([gymId, invoiceNumber])
+  @@index([gymId, status])
+  @@index([gymId, memberId])
+  @@index([gymId, dueDate])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  gymId       String
+  invoiceId   String
+  description String
+  quantity    Int     @default(1)
+  unitPrice   Decimal @db.Decimal(12, 2)
+  amount      Decimal @db.Decimal(12, 2)
+
+  gym     Gym     @relation(fields: [gymId], references: [id])
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([gymId, invoiceId])
+  @@map("invoice_items")
+}
+
+model Offer {
+  id              String    @id @default(cuid())
+  gymId           String
+  planId          String?
+  name            String
+  description     String?
+  type            OfferType
+  value           Decimal   @db.Decimal(12, 2)
+  code            String?
+  maxRedemptions  Int?
+  usedCount       Int       @default(0)
+  validFrom       DateTime  @db.Timestamptz(3)
+  validTo         DateTime  @db.Timestamptz(3)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt       DateTime? @db.Timestamptz(3)
+
+  gym         Gym               @relation(fields: [gymId], references: [id])
+  plan        Plan?             @relation(fields: [planId], references: [id])
+  redemptions OfferRedemption[]
+
+  @@unique([gymId, code])
+  @@index([gymId, isActive])
+  @@map("offers")
+}
+
+model OfferRedemption {
+  id        String   @id @default(cuid())
+  gymId     String
+  offerId   String
+  memberId  String
+  amount    Decimal  @db.Decimal(12, 2)
+  redeemedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  gym    Gym    @relation(fields: [gymId], references: [id])
+  offer  Offer  @relation(fields: [offerId], references: [id])
+  member Member @relation(fields: [memberId], references: [id])
+
+  @@index([gymId, offerId])
+  @@index([gymId, memberId])
+  @@map("offer_redemptions")
+}
+
+model AttendanceDevice {
+  id           String       @id @default(cuid())
+  gymId        String
+  name         String
+  vendor       DeviceVendor @default(ZKTECO)
+  serialNumber String
+  location     String?
+  ipAddress    String?
+  isActive     Boolean      @default(true)
+  lastSeenAt   DateTime?    @db.Timestamptz(3)
+  config       Json?
+  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @db.Timestamptz(3)
+
+  gym            Gym             @relation(fields: [gymId], references: [id])
+  attendanceLogs AttendanceLog[]
+  deviceUserMaps DeviceUserMap[]
+
+  @@unique([gymId, serialNumber])
+  @@index([serialNumber])
+  @@map("attendance_devices")
+}
+
+model DeviceUserMap {
+  id         String   @id @default(cuid())
+  gymId      String
+  deviceId   String
+  memberId   String
+  devicePin  String
+  syncedAt   DateTime? @db.Timestamptz(3)
+  syncStatus String   @default("PENDING")
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  gym    Gym              @relation(fields: [gymId], references: [id])
+  device AttendanceDevice @relation(fields: [deviceId], references: [id])
+  member Member           @relation(fields: [memberId], references: [id])
+
+  @@unique([deviceId, devicePin])
+  @@unique([deviceId, memberId])
+  @@index([gymId, memberId])
+  @@map("device_user_map")
+}
+
+model AttendanceLog {
+  id             String               @id @default(cuid())
+  gymId          String
+  deviceId       String?
+  memberId       String?
+  devicePin      String?
+  punchedAt      DateTime             @db.Timestamptz(3)
+  method         AttendanceMethod     @default(UNKNOWN)
+  direction      AttendanceDirection  @default(UNKNOWN)
+  rawPayload     String?
+  isMapped       Boolean              @default(false)
+  isManual       Boolean              @default(false)
+  idempotencyKey String?
+  alertReason    String?
+  createdById    String?
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+
+  gym       Gym               @relation(fields: [gymId], references: [id])
+  device    AttendanceDevice? @relation(fields: [deviceId], references: [id])
+  member    Member?           @relation(fields: [memberId], references: [id])
+  createdBy User?             @relation("ManualCheckInBy", fields: [createdById], references: [id])
+
+  @@unique([gymId, idempotencyKey])
+  @@index([gymId, punchedAt])
+  @@index([gymId, memberId, punchedAt])
+  @@index([gymId, isMapped])
+  @@map("attendance_logs")
+}
+
+model DietTemplate {
+  id          String    @id @default(cuid())
+  gymId       String
+  name        String
+  description String?
+  calories    Int?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt   DateTime? @db.Timestamptz(3)
+
+  gym         Gym                @relation(fields: [gymId], references: [id])
+  meals       DietTemplateMeal[]
+  assignments DietAssignment[]
+
+  @@index([gymId])
+  @@map("diet_templates")
+}
+
+model DietTemplateMeal {
+  id         String       @id @default(cuid())
+  gymId      String
+  templateId String
+  mealType   DietMealType
+  dayOfWeek  Int?
+  title      String
+  foods      String
+  calories   Int?
+  proteinG   Decimal?     @db.Decimal(8, 2)
+  carbsG     Decimal?     @db.Decimal(8, 2)
+  fatsG      Decimal?     @db.Decimal(8, 2)
+  sortOrder  Int          @default(0)
+
+  template DietTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@map("diet_template_meals")
+}
+
+model DietAssignment {
+  id         String    @id @default(cuid())
+  gymId      String
+  memberId   String
+  templateId String
+  assignedBy String?
+  startDate  DateTime  @db.Date
+  endDate    DateTime? @db.Date
+  isActive   Boolean   @default(true)
+  notes      String?
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+
+  gym      Gym          @relation(fields: [gymId], references: [id])
+  member   Member       @relation(fields: [memberId], references: [id])
+  template DietTemplate @relation(fields: [templateId], references: [id])
+  staff    Staff?       @relation("AssignedByStaff", fields: [assignedBy], references: [id])
+  schedules MemberDietSchedule[]
+
+  @@index([gymId, memberId])
+  @@map("diet_assignments")
+}
+
+model MemberDietSchedule {
+  id           String       @id @default(cuid())
+  gymId        String
+  memberId     String
+  assignmentId String
+  scheduleDate DateTime     @db.Date
+  mealType     DietMealType
+  title        String
+  foods        String
+  calories     Int?
+  completed    Boolean      @default(false)
+  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @db.Timestamptz(3)
+
+  gym        Gym            @relation(fields: [gymId], references: [id])
+  member     Member         @relation(fields: [memberId], references: [id])
+  assignment DietAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@index([gymId, memberId, scheduleDate])
+  @@map("member_diet_schedule")
+}
+
+model Exercise {
+  id          String    @id @default(cuid())
+  gymId       String
+  name        String
+  category    String?
+  muscleGroup String?
+  equipment   String?
+  instructions String?
+  videoUrl    String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt   DateTime? @db.Timestamptz(3)
+
+  gym Gym @relation(fields: [gymId], references: [id])
+
+  @@index([gymId, name])
+  @@map("exercises")
+}
+
+model WorkoutPlan {
+  id          String    @id @default(cuid())
+  gymId       String
+  name        String
+  description String?
+  difficulty  String?
+  durationWeeks Int?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt   DateTime? @db.Timestamptz(3)
+
+  gym         Gym                 @relation(fields: [gymId], references: [id])
+  days        WorkoutPlanDay[]
+  assignments WorkoutAssignment[]
+
+  @@index([gymId])
+  @@map("workout_plans")
+}
+
+model WorkoutPlanDay {
+  id           String @id @default(cuid())
+  gymId        String
+  workoutPlanId String
+  dayNumber    Int
+  name         String
+  exercises    Json
+  notes        String?
+
+  workoutPlan WorkoutPlan @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
+
+  @@index([workoutPlanId])
+  @@map("workout_plan_days")
+}
+
+model WorkoutAssignment {
+  id            String    @id @default(cuid())
+  gymId         String
+  memberId      String
+  workoutPlanId String
+  assignedById  String?
+  startDate     DateTime  @db.Date
+  endDate       DateTime? @db.Date
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
+
+  gym         Gym         @relation(fields: [gymId], references: [id])
+  member      Member      @relation(fields: [memberId], references: [id])
+  workoutPlan WorkoutPlan @relation(fields: [workoutPlanId], references: [id])
+  assignedBy  Staff?      @relation("WorkoutAssignedBy", fields: [assignedById], references: [id])
+  logs        WorkoutLog[]
+
+  @@index([gymId, memberId])
+  @@map("workout_assignments")
+}
+
+model WorkoutLog {
+  id           String   @id @default(cuid())
+  gymId        String
+  memberId     String
+  assignmentId String?
+  loggedAt     DateTime @default(now()) @db.Timestamptz(3)
+  exercises    Json
+  durationMin  Int?
+  notes        String?
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  gym        Gym                @relation(fields: [gymId], references: [id])
+  member     Member             @relation(fields: [memberId], references: [id])
+  assignment WorkoutAssignment? @relation(fields: [assignmentId], references: [id])
+
+  @@index([gymId, memberId, loggedAt])
+  @@map("workout_logs")
+}
+
+model StaffSalary {
+  id          String   @id @default(cuid())
+  gymId       String
+  staffId     String
+  periodMonth Int
+  periodYear  Int
+  amount      Decimal  @db.Decimal(12, 2)
+  paidAmount  Decimal  @default(0) @db.Decimal(12, 2)
+  status      String   @default("PENDING")
+  paidAt      DateTime? @db.Timestamptz(3)
+  notes       String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  gym   Gym   @relation(fields: [gymId], references: [id])
+  staff Staff @relation(fields: [staffId], references: [id])
+
+  @@unique([gymId, staffId, periodMonth, periodYear])
+  @@map("staff_salary")
+}
+
+model StaffAttendance {
+  id         String    @id @default(cuid())
+  gymId      String
+  staffId    String
+  date       DateTime  @db.Date
+  status     String    @default("present")
+  checkInAt  DateTime? @db.Timestamptz(3)
+  checkOutAt DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+
+  gym   Gym   @relation(fields: [gymId], references: [id])
+  staff Staff @relation(fields: [staffId], references: [id])
+
+  @@unique([gymId, staffId, date])
+  @@index([gymId, date])
+  @@map("staff_attendance")
+}
+
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  gymId     String
+  key       String
+  name      String
+  body      String
+  language  String   @default("en")
+  metaTplId String?
+  variables Json?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  gym Gym @relation(fields: [gymId], references: [id])
+
+  @@unique([gymId, key])
+  @@map("message_templates")
+}
+
+model MessageQueue {
+  id             String        @id @default(cuid())
+  gymId          String
+  toPhone        String
+  templateKey    String?
+  body           String
+  status         MessageStatus @default(QUEUED)
+  idempotencyKey String?
+  scheduledAt    DateTime      @default(now()) @db.Timestamptz(3)
+  attempts       Int           @default(0)
+  maxAttempts    Int           @default(3)
+  lastError      String?
+  payload        Json?
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
+
+  gym  Gym          @relation(fields: [gymId], references: [id])
+  logs MessageLog[]
+
+  @@unique([gymId, idempotencyKey])
+  @@index([gymId, status, scheduledAt])
+  @@map("message_queue")
+}
+
+model MessageLog {
+  id            String        @id @default(cuid())
+  gymId         String
+  queueId    String?
+  toPhone       String
+  providerMsgId String?
+  status        MessageStatus
+  costEstimate  Decimal?      @db.Decimal(10, 4)
+  response      Json?
+  error         String?
+  sentAt        DateTime?     @db.Timestamptz(3)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+
+  gym   Gym           @relation(fields: [gymId], references: [id])
+  queue MessageQueue? @relation(fields: [queueId], references: [id])
+
+  @@index([gymId, createdAt])
+  @@map("message_logs")
+}
+
+model AutomationSetting {
+  id        String   @id @default(cuid())
+  gymId     String
+  key       String
+  enabled   Boolean  @default(true)
+  config    Json?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  gym Gym @relation(fields: [gymId], references: [id])
+
+  @@unique([gymId, key])
+  @@map("automation_settings")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  gymId     String
+  userId    String?
+  type      NotificationType @default(INFO)
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now()) @db.Timestamptz(3)
+
+  gym  Gym   @relation(fields: [gymId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([gymId, userId, isRead])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  gymId      String
+  userId     String?
+  action     AuditAction
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now()) @db.Timestamptz(3)
+
+  gym  Gym   @relation(fields: [gymId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([gymId, createdAt])
+  @@index([gymId, entityType, entityId])
+  @@map("audit_logs")
+}

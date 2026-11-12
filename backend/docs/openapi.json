@@ -1,0 +1,18 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Gym Management API",
+    "description": "Multi-gym management backend — PKR / Asia/Karachi. Regenerated on API boot to docs/openapi.json and available at /docs-json.",
+    "version": "1.0"
+  },
+  "paths": {},
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "x-note": "Start the API once (npm run start:dev) to overwrite this file with the full Swagger document, or run npm run openapi:export (requires Redis + DB)."
+}

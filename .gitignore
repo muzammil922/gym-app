@@ -1,0 +1,32 @@
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Dependencies & builds
+**/node_modules/
+**/dist/
+**/.expo/
+**/web-build/
+**/coverage/
+**/uploads/
+backend/storage/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs & caches
+*.log
+.metro-health-check*
+*.tsbuildinfo
+
+# Native (Expo prebuild)
+frontend/ios/
+frontend/android/
+
+# Local agent skills (nested repos)
+.agents/

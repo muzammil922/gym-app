@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+dist/
+build/
+coverage/
+
+# Env & secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Uploads & generated
+uploads/
+storage/
+tmp/
+*.pdf
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# OpenAPI generated (keep docs/openapi.json if committed intentionally)
+# docs/openapi.json
+
+# Test
+.nyc_output/
