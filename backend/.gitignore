@@ -22,9 +22,9 @@ Thumbs.db
 .vscode/
 *.swp
 
-# Uploads & generated
+# Uploads & generated (not backend/src/storage — Nest storage adapters)
 uploads/
-storage/
+/storage/
 tmp/
 *.pdf
 
