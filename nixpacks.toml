@@ -1,20 +1,23 @@
 # Repo root is not the Node app — API lives in backend/ (Dokploy / Railway / Nixpacks).
 
 [variables]
-NIXPACKS_NODE_VERSION = "20"
+NIXPACKS_NODE_VERSION = "22"
 
 [phases.setup]
-nixPkgs = ["nodejs_20", "openssl"]
+nixPkgs = ["nodejs_22", "openssl"]
 
 [phases.install]
 dependsOn = ["setup"]
-cmds = ["cd backend && (npm ci || npm install)"]
+# Dokploy sets NODE_ENV=production — devDeps required for nest build + prisma
+cmds = [
+  "cd backend && NPM_CONFIG_PRODUCTION=false npm install --include=dev",
+]
 
 [phases.build]
 dependsOn = ["install"]
 cmds = [
   "cd backend && npx prisma generate",
-  "cd backend && npm run build",
+  "cd backend && npx nest build",
 ]
 
 [start]

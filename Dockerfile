@@ -2,14 +2,14 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY backend/package.json backend/package-lock.json* ./
-RUN npm ci || npm install
+RUN NPM_CONFIG_PRODUCTION=false npm ci --include=dev || NPM_CONFIG_PRODUCTION=false npm install --include=dev
 
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY backend/ .
 RUN npx prisma generate
-RUN npm run build
+RUN npx nest build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
