@@ -21,4 +21,4 @@ cmds = [
 ]
 
 [start]
-cmd = "cd backend && npx prisma migrate deploy && node dist/main.js"
+cmd = "cd backend && sh scripts/start-prod.sh"
