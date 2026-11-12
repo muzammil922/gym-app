@@ -9,8 +9,8 @@ NestJS + Prisma + PostgreSQL + Redis/BullMQ multi-gym backend.
 ## Folder
 
 ```
-backend/          ← this API
-frontend/         ← mobile/web (separate)
+backend/          ← this API (tracked in gym-app repo)
+frontend/         ← Expo app (local only; Expo Go — not in this GitHub repo)
 ```
 
 ## Database: remote vs local

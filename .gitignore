@@ -28,5 +28,8 @@ Thumbs.db
 frontend/ios/
 frontend/android/
 
+# Expo app — runs via Expo Go locally; not in this repo
+frontend/
+
 # Local agent skills (nested repos)
 .agents/
