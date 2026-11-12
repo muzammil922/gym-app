@@ -21,6 +21,25 @@ npm run start:dev
 
 See [backend/README.md](backend/README.md) for database, Docker, WhatsApp/Evolution, and worker setup.
 
+## Dokploy deploy
+
+The repo root only contains `backend/` — Nixpacks alone cannot auto-detect the app. This repo includes:
+
+| File | Use |
+|------|-----|
+| `nixpacks.toml` | **Nixpacks** build — installs/builds `backend/` |
+| `Dockerfile` (root) | **Dockerfile** build type — same result, often more reliable |
+
+1. Create application → GitHub `muzammil922/gym-app`, branch `main`.
+2. Build: **Nixpacks** (uses root `nixpacks.toml`) **or** **Dockerfile** (root `Dockerfile`).
+3. Do **not** need a custom root directory if using these files (repo root is fine).
+4. Add environment variables in Dokploy (paste from `backend/.env.vps.template` + your secrets).
+5. Required: `DATABASE_URL`, `REDIS_URL`, `JWT_*`, `EVOLUTION_*` if WhatsApp is on.
+6. Port **3000**, health: `GET /api/health` (if exposed).
+7. WhatsApp queue jobs: run a **second** service with command `node dist/worker.js` (same image, `backend` workdir) if you use BullMQ workers.
+
+Redeploy after pushing config fixes to GitHub.
+
 ## Frontend (local only)
 
 Keep the Expo project on your machine. Point `frontend/.env` at this API:
