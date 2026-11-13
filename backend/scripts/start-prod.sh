@@ -4,6 +4,19 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+ensure_dist() {
+  if [ -f dist/main.js ]; then
+    return 0
+  fi
+  echo "[start-prod] dist/main.js missing — running production build..."
+  NPM_CONFIG_PRODUCTION=false npx prisma generate
+  NPM_CONFIG_PRODUCTION=false npx nest build
+  if [ ! -f dist/main.js ]; then
+    echo "[start-prod] Build failed: dist/main.js still missing." >&2
+    exit 1
+  fi
+}
+
 LOG=/tmp/prisma-migrate.err
 
 run_migrate() {
@@ -27,17 +40,20 @@ needs_recovery() {
 }
 
 if run_migrate; then
+  ensure_dist
   exec node dist/main.js
 fi
 
 if needs_recovery; then
   npx prisma migrate resolve --rolled-back "20260315000000_init" 2>/dev/null || true
   if run_migrate; then
+    ensure_dist
     exec node dist/main.js
   fi
   if needs_recovery; then
     recover_and_reset
     run_migrate
+    ensure_dist
     exec node dist/main.js
   fi
 fi
