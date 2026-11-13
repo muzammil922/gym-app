@@ -10,22 +10,33 @@ run_migrate() {
   npx prisma migrate deploy 2>"$LOG"
 }
 
+recover_and_reset() {
+  echo "[start-prod] Recovering failed init migration..."
+  npx prisma migrate resolve --rolled-back "20260315000000_init" 2>/dev/null || true
+  echo "[start-prod] Resetting public schema (fresh / empty DB only)."
+  npx prisma db execute --file scripts/reset-public-schema.sql
+  npx prisma migrate resolve --rolled-back "20260315000000_init" 2>/dev/null || true
+}
+
+needs_recovery() {
+  grep -q P3009 "$LOG" 2>/dev/null || \
+    grep -q P3018 "$LOG" 2>/dev/null || \
+    grep -qi "failed migrations" "$LOG" 2>/dev/null || \
+    grep -qi "syntax error" "$LOG" 2>/dev/null || \
+    grep -qi "already exists" "$LOG" 2>/dev/null
+}
+
 if run_migrate; then
   exec node dist/main.js
 fi
 
-if grep -q P3009 "$LOG" || grep -qi "failed migrations" "$LOG"; then
-  echo "[start-prod] P3009: marking failed init as rolled back..."
-  npx prisma migrate resolve --rolled-back "20260315000000_init"
-
+if needs_recovery; then
+  npx prisma migrate resolve --rolled-back "20260315000000_init" 2>/dev/null || true
   if run_migrate; then
     exec node dist/main.js
   fi
-
-  if grep -qi "already exists" "$LOG"; then
-    echo "[start-prod] Partial schema — resetting public schema (empty DB only)."
-    npx prisma db execute --file scripts/reset-public-schema.sql
-    npx prisma migrate resolve --rolled-back "20260315000000_init" 2>/dev/null || true
+  if needs_recovery; then
+    recover_and_reset
     run_migrate
     exec node dist/main.js
   fi
