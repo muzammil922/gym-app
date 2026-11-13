@@ -8,11 +8,16 @@ ensure_dist() {
   if [ -f dist/main.js ]; then
     return 0
   fi
-  echo "[start-prod] dist/main.js missing — running production build..."
+  echo "[start-prod] dist/main.js missing — installing dev deps and building..."
+  NPM_CONFIG_PRODUCTION=false npm install --include=dev --no-audit --no-fund
   NPM_CONFIG_PRODUCTION=false npx prisma generate
-  NPM_CONFIG_PRODUCTION=false npx nest build
+  if ! NPM_CONFIG_PRODUCTION=false npm run build; then
+    echo "[start-prod] npm run build failed." >&2
+    exit 1
+  fi
   if [ ! -f dist/main.js ]; then
     echo "[start-prod] Build failed: dist/main.js still missing." >&2
+    ls -la dist 2>/dev/null || echo "(no dist directory)"
     exit 1
   fi
 }

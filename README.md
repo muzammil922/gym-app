@@ -31,7 +31,7 @@ The repo root only contains `backend/` — Nixpacks alone cannot auto-detect the
 | `Dockerfile` (root) | **Dockerfile** build type — same result, often more reliable |
 
 1. Create application → GitHub `muzammil922/gym-app`, branch `main`.
-2. Build: **Nixpacks** (uses root `nixpacks.toml`) **or** **Dockerfile** (root `Dockerfile`).
+2. Build: **Dockerfile** (root `Dockerfile`, recommended) **or** **Nixpacks** (root `nixpacks.toml`). If you see `dist/main.js` missing at runtime, switch to **Dockerfile** and redeploy.
 3. Do **not** need a custom root directory if using these files (repo root is fine).
 4. Add environment variables in Dokploy (copy `backend/.env.vps.template` into Dokploy env UI — **never commit real secrets to Git**).
 5. Required: `DATABASE_URL`, `REDIS_HOST` + `REDIS_PASSWORD` (+ `REDIS_USERNAME=default` on Dokploy Redis), `JWT_*`, `STORAGE_DRIVER=cloudinary` + `CLOUDINARY_URL`, `EVOLUTION_*` if WhatsApp is on.
