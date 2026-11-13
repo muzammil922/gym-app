@@ -23,7 +23,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
-    "openapi:export": "ts-node -r tsconfig-paths/register scripts/export-openapi.ts"
+    "openapi:export": "ts-node -r tsconfig-paths/register scripts/export-openapi.ts",
+    "api:smoke": "node scripts/api-smoke.mjs"
   },
   "dependencies": {
     "@nestjs/bullmq": "^10.2.3",
