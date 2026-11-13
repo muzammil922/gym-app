@@ -20,7 +20,7 @@ dependsOn = ["install"]
 cmds = [
   "cd backend && npx prisma generate",
   "cd backend && npx nest build",
-  "test -f backend/dist/main.js || (echo 'Nixpacks build failed: backend/dist/main.js missing' && exit 1)",
+  "test -f backend/dist/main.js || test -f backend/dist/src/main.js || (echo 'Nixpacks build failed: main.js not in dist' && exit 1)",
 ]
 
 [start]

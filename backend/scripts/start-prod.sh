@@ -4,8 +4,18 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-ensure_dist() {
+main_entry() {
   if [ -f dist/main.js ]; then
+    echo dist/main.js
+  elif [ -f dist/src/main.js ]; then
+    echo dist/src/main.js
+  else
+    echo ""
+  fi
+}
+
+ensure_dist() {
+  if [ -n "$(main_entry)" ]; then
     return 0
   fi
   echo "[start-prod] dist/main.js missing — installing dev deps and building..."
@@ -15,11 +25,16 @@ ensure_dist() {
     echo "[start-prod] npm run build failed." >&2
     exit 1
   fi
-  if [ ! -f dist/main.js ]; then
-    echo "[start-prod] Build failed: dist/main.js still missing." >&2
+  if [ -z "$(main_entry)" ]; then
+    echo "[start-prod] Build failed: main.js not found in dist." >&2
     ls -la dist 2>/dev/null || echo "(no dist directory)"
     exit 1
   fi
+}
+
+run_app() {
+  ENTRY="$(main_entry)"
+  exec node "$ENTRY"
 }
 
 LOG=/tmp/prisma-migrate.err
@@ -46,20 +61,20 @@ needs_recovery() {
 
 if run_migrate; then
   ensure_dist
-  exec node dist/main.js
+  run_app
 fi
 
 if needs_recovery; then
   npx prisma migrate resolve --rolled-back "20260315000000_init" 2>/dev/null || true
   if run_migrate; then
     ensure_dist
-    exec node dist/main.js
+    run_app
   fi
   if needs_recovery; then
     recover_and_reset
     run_migrate
     ensure_dist
-    exec node dist/main.js
+    run_app
   fi
 fi
 
